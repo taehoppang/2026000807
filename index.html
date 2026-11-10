@@ -1,0 +1,1787 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>컴퓨터공학과 소통 허브</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Pretendard:wght@300;400;500;600;700&display=swap');
+    body { font-family: 'Pretendard', sans-serif; }
+    .tab-active { border-bottom: 2px solid #2563eb; color: #2563eb; font-weight: 600; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col">
+
+  <!-- ================= 0. 실습용 사용자 전환 및 상태 바 ================= -->
+  <div class="bg-slate-900 text-white text-xs px-4 py-2 border-b border-slate-700">
+    <div class="max-w-6xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex items-center space-x-2">
+        <span class="bg-blue-600 text-[10px] font-bold px-2 py-0.5 rounded">실습 제어판</span>
+        <span>현재 로그인:</span>
+        <span id="current-user-badge" class="font-bold text-amber-300">홍길동 (학생)</span>
+        <span id="restriction-status-badge" class="hidden bg-rose-600 text-white px-1.5 py-0.5 rounded text-[10px]">작성 제한됨</span>
+      </div>
+      <div class="flex items-center space-x-2">
+        <span class="text-slate-400">계정 전환:</span>
+        <button onclick="switchUser('userA')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded transition border border-slate-600">홍길동(A)</button>
+        <button onclick="switchUser('userB')" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded transition border border-slate-600">이영희(B)</button>
+        <button onclick="switchUser('admin')" class="px-2 py-1 bg-blue-900 hover:bg-blue-800 text-blue-200 rounded transition border border-blue-600 font-bold">김관리(조교/Admin)</button>
+        <button onclick="openCustomLoginModal()" class="px-2 py-1 bg-slate-700 hover:bg-slate-600 text-slate-200 rounded transition">새 실명 입력</button>
+        <button onclick="resetAllData()" class="px-2 py-1 bg-rose-900/80 hover:bg-rose-800 text-rose-200 rounded transition border border-rose-700 text-[10px]" title="실습용: 모든 데이터를 초기 상태로 리셋">데이터 초기화(테스트용)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 1. 긴급 공지 띠 배너 ================= -->
+  <div id="urgent-banner" class="bg-gradient-to-r from-rose-600 to-amber-600 text-white py-2.5 px-4 shadow-sm transition-all duration-300">
+    <div class="max-w-6xl mx-auto flex items-center justify-between gap-4">
+      <div class="flex items-center space-x-2 font-medium text-sm">
+        <i class="ph-bold ph-megaphone text-lg animate-bounce"></i>
+        <span class="bg-white/20 text-xs px-2 py-0.5 rounded font-bold uppercase tracking-wider">긴급</span>
+        <span id="urgent-banner-text">2026학년도 2학기 전공 심화과정 수강신청 마감 2시간 전입니다!</span>
+      </div>
+      <div class="flex items-center space-x-3 text-xs">
+        <button onclick="closeUrgentBanner()" class="flex items-center space-x-1 hover:text-slate-200 transition bg-black/20 px-2 py-1 rounded">
+          <span>닫기</span>
+          <i class="ph-bold ph-x text-sm"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 2. 헤더 네비게이션 ================= -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-xs">
+    <div class="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-4 cursor-pointer" onclick="navigateTab('all')">
+        <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center font-black text-xl shadow-md">
+          CS
+        </div>
+        <div>
+          <h1 class="font-bold text-lg text-slate-900 tracking-tight leading-tight">컴퓨터공학과 소통 허브</h1>
+          <p class="text-xs text-slate-500">공지사항 & 자유 의견 공유 광장</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <!-- 알림 드롭다운 버튼 -->
+        <div class="relative">
+          <button onclick="toggleNotificationDropdown()" class="p-2 rounded-lg hover:bg-slate-100 text-slate-600 relative transition">
+            <i class="ph-bold ph-bell text-xl"></i>
+            <span id="notif-badge" class="hidden absolute top-1 right-1 w-2.5 h-2.5 bg-rose-500 rounded-full"></span>
+          </button>
+          <!-- 알림 패널 -->
+          <div id="notif-dropdown" class="hidden absolute right-0 mt-2 w-80 bg-white rounded-xl shadow-xl border border-slate-200 py-2 z-50">
+            <div class="px-4 py-2 border-b border-slate-100 flex items-center justify-between">
+              <span class="font-bold text-sm text-slate-800">최근 알림</span>
+              <button onclick="clearNotifications()" class="text-[11px] text-slate-400 hover:text-slate-600">지우기</button>
+            </div>
+            <div id="notif-list" class="max-h-64 overflow-y-auto divide-y divide-slate-100 text-xs">
+              <!-- 알림 리스트 삽입 -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 관리자 메뉴 버튼 (관리자일 때만 활성화) -->
+        <button id="admin-menu-btn" onclick="openAdminModal()" class="hidden items-center space-x-1.5 px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-amber-300 rounded-lg text-xs font-semibold shadow-xs transition">
+          <i class="ph-bold ph-shield-check text-base"></i>
+          <span>관리자 대시보드</span>
+          <span id="admin-alert-count" class="hidden bg-rose-500 text-white px-1.5 py-0.2 rounded-full text-[10px]"></span>
+        </button>
+
+        <!-- 새 글 쓰기 버튼 -->
+        <button onclick="openWriteModal()" class="flex items-center space-x-1.5 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow-xs transition">
+          <i class="ph-bold ph-pencil-simple text-base"></i>
+          <span>글쓰기</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 탭 네비게이션 -->
+    <div class="max-w-6xl mx-auto px-4 flex items-center justify-between border-t border-slate-100 text-sm overflow-x-auto">
+      <div id="category-tabs" class="flex space-x-6 py-2.5">
+        <!-- 탭 목록 동적 렌더링 -->
+      </div>
+      <div class="text-xs text-slate-400 py-2.5 whitespace-nowrap pl-4">
+        총 <span id="total-posts-count" class="font-semibold text-slate-700">0</span>개의 글
+      </div>
+    </div>
+  </header>
+
+  <!-- ================= 3. 메인 콘텐츠 영역 ================= -->
+  <main class="max-w-6xl mx-auto px-4 py-6 flex-1 w-full">
+    <!-- 상단 탭 설명 및 필터 -->
+    <div class="flex items-center justify-between mb-4">
+      <h2 id="current-tab-title" class="text-xl font-bold text-slate-900 flex items-center space-x-2">
+        <span>전체 글 보기</span>
+      </h2>
+      <div class="flex items-center space-x-2">
+        <input type="text" id="search-input" onkeyup="handleSearch()" placeholder="제목, 작성자, 내용 검색" class="text-xs px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 w-52">
+      </div>
+    </div>
+
+    <!-- 게시글 컨테이너 (텍스트 리스트형 또는 미디어 그리드형) -->
+    <div id="posts-container" class="space-y-3">
+      <!-- 동적 렌더링 -->
+    </div>
+  </main>
+
+  <!-- ================= 4. 게시글 상세 모달 ================= -->
+  <div id="post-detail-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-3xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <!-- 모달 헤더 -->
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <div class="flex items-center space-x-2">
+          <span id="detail-category-badge" class="px-2 py-0.5 rounded text-xs font-bold bg-blue-100 text-blue-700">공지</span>
+          <span id="detail-date" class="text-xs text-slate-400">2026-11-10 15:00</span>
+        </div>
+        <button onclick="closeDetailModal()" class="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
+          <i class="ph-bold ph-x text-xl"></i>
+        </button>
+      </div>
+
+      <!-- 모달 본문 (스크롤) -->
+      <div class="px-6 py-5 overflow-y-auto flex-1 space-y-4">
+        <div>
+          <h2 id="detail-title" class="text-2xl font-bold text-slate-900 mb-2 leading-snug">게시글 제목</h2>
+          <div class="flex items-center justify-between text-xs text-slate-500 pb-3 border-b border-slate-100">
+            <div class="flex items-center space-x-2">
+              <span class="font-medium text-slate-700" id="detail-author">작성자</span>
+              <span class="text-slate-300">|</span>
+              <span>조회수 <span id="detail-views">0</span></span>
+            </div>
+            <div id="detail-actions" class="flex items-center space-x-2">
+              <!-- 권한에 따라 동적 노출: 본인글(수정/삭제), 타인글(신고), 관리자(강제삭제) -->
+            </div>
+          </div>
+        </div>
+
+        <!-- 미디어 영역 (사진/동영상) -->
+        <div id="detail-media-container" class="hidden rounded-xl overflow-hidden bg-slate-950 flex items-center justify-center max-h-[400px]">
+          <!-- 미디어 동적 주입 -->
+        </div>
+
+        <!-- 글 본문 -->
+        <div id="detail-content" class="text-slate-700 text-sm leading-relaxed whitespace-pre-wrap py-2 min-h-[100px]">
+          게시글 본문 내용입니다.
+        </div>
+
+        <!-- 수정 일시 안내 -->
+        <div id="detail-updated-at" class="hidden text-[11px] text-slate-400 italic">
+          (2026-11-10에 수정됨)
+        </div>
+
+        <hr class="border-slate-200">
+
+        <!-- 댓글 섹션 -->
+        <div class="space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-bold text-slate-800 flex items-center space-x-1">
+              <i class="ph-bold ph-chat-circle-text text-base text-blue-600"></i>
+              <span>댓글 <span id="detail-comments-count" class="text-blue-600 font-semibold">0</span></span>
+            </h3>
+          </div>
+
+          <!-- 댓글 목록 -->
+          <div id="detail-comments-list" class="space-y-2.5">
+            <!-- 댓글 동적 렌더링 -->
+          </div>
+
+          <!-- 댓글 작성 폼 -->
+          <div class="flex items-start space-x-2 pt-2">
+            <textarea id="comment-input" rows="2" placeholder="댓글을 입력하세요 (상대방을 존중하는 언어를 사용합시다)" class="flex-1 text-xs p-3 border border-slate-300 rounded-xl focus:outline-none focus:border-blue-500 resize-none"></textarea>
+            <button onclick="submitComment()" class="px-4 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition">등록</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 5. 글쓰기 / 수정 모달 ================= -->
+  <div id="write-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-2xl w-full shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+      <div class="px-6 py-4 border-b border-slate-200 flex items-center justify-between bg-slate-50">
+        <h3 id="write-modal-title" class="font-bold text-slate-900 text-base">새 게시글 작성</h3>
+        <button onclick="closeWriteModal()" class="text-slate-400 hover:text-slate-600 p-1">
+          <i class="ph-bold ph-x text-xl"></i>
+        </button>
+      </div>
+
+      <form id="post-form" onsubmit="event.preventDefault(); handlePostSubmit(event); return false;" class="p-6 space-y-4">
+        <input type="hidden" id="edit-post-id" value="">
+
+        <!-- 카테고리 선택 -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">카테고리 (탭)</label>
+          <select id="post-category" onchange="handleCategoryChange()" class="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500">
+            <!-- 동적 주입 (공지사항은 관리자에게만 노출) -->
+          </select>
+        </div>
+
+        <!-- 제목 -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">제목</label>
+          <input type="text" id="post-title" required placeholder="제목을 입력하세요" class="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500">
+        </div>
+
+        <!-- 미디어 첨부 (사진/영상 탭 선택 시 활성화) -->
+        <div id="media-input-group" class="hidden p-3 bg-blue-50 border border-blue-200 rounded-xl space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-xs font-bold text-blue-900 flex items-center space-x-1">
+              <i class="ph-bold ph-image text-sm"></i>
+              <span id="media-label">미디어 URL 첨부</span>
+            </label>
+            <span class="text-[10px] text-blue-600 font-medium">✨ AI 유해성 자동 검사 진행</span>
+          </div>
+          <input type="url" id="post-media-url" placeholder="https://..." class="w-full text-xs p-2 border border-blue-300 rounded-lg bg-white focus:outline-none">
+          <div class="flex items-center space-x-2 text-[11px] text-slate-500">
+            <span>샘플 빠른 선택:</span>
+            <button type="button" onclick="setSampleMedia('photo_safe')" class="px-2 py-0.5 bg-white border border-slate-200 rounded hover:bg-slate-50">정상 학과 사진</button>
+            <button type="button" onclick="setSampleMedia('photo_unsafe')" class="px-2 py-0.5 bg-rose-100 text-rose-700 border border-rose-300 rounded hover:bg-rose-200">⚠️ 유해 의심 사진(테스트용)</button>
+            <button type="button" onclick="setSampleMedia('video')" class="px-2 py-0.5 bg-white border border-slate-200 rounded hover:bg-slate-50">강의 영상 링크</button>
+          </div>
+        </div>
+
+        <!-- 본문 내용 -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">본문 내용</label>
+          <textarea id="post-content" required rows="6" placeholder="내용을 입력하세요..." class="w-full text-xs p-3 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500 resize-none"></textarea>
+        </div>
+
+        <!-- 모달 버튼 -->
+        <div class="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+          <button type="button" onclick="closeWriteModal()" class="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold transition">취소</button>
+          <button type="button" onclick="handlePostSubmit(event)" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold shadow-xs transition">작성 완료</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ================= 6. 신고 모달 ================= -->
+  <div id="report-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl p-6 space-y-4">
+      <div class="flex items-center justify-between border-b border-slate-100 pb-3">
+        <h3 class="font-bold text-slate-900 text-sm flex items-center space-x-1.5 text-rose-600">
+          <i class="ph-bold ph-warning-octagon text-lg"></i>
+          <span>게시글 신고하기</span>
+        </h3>
+        <button onclick="closeReportModal()" class="text-slate-400 hover:text-slate-600">
+          <i class="ph-bold ph-x text-lg"></i>
+        </button>
+      </div>
+      <p class="text-xs text-slate-500">부적절하다고 판단되는 사유를 선택해 주세요. 신고 내역은 관리자에게 전달되며, 허위 신고 남발 시 이용이 제한될 수 있습니다.</p>
+      
+      <input type="hidden" id="report-post-id" value="">
+      <div class="space-y-2 text-xs">
+        <label class="flex items-center space-x-2 p-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+          <input type="radio" name="report-reason" value="욕설 및 인신공격" checked class="text-blue-600">
+          <span>욕설, 비방 및 인신공격</span>
+        </label>
+        <label class="flex items-center space-x-2 p-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+          <input type="radio" name="report-reason" value="상업적 광고 및 스팸" class="text-blue-600">
+          <span>상업적 광고 및 도배/스팸</span>
+        </label>
+        <label class="flex items-center space-x-2 p-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+          <input type="radio" name="report-reason" value="음란물 및 부적절한 미디어" class="text-blue-600">
+          <span>음란성 또는 유해 미디어 포함</span>
+        </label>
+        <label class="flex items-center space-x-2 p-2 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-50">
+          <input type="radio" name="report-reason" value="기타 운영원칙 위반" class="text-blue-600">
+          <span>기타 학과 게시판 운영 규정 위반</span>
+        </label>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2">
+        <button onclick="closeReportModal()" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold">취소</button>
+        <button onclick="submitReport()" class="px-4 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold">신고 제출</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 7. 관리자 대시보드 모달 ================= -->
+  <div id="admin-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-5xl w-full max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+      <!-- 관리자 모달 헤더 -->
+      <div class="px-6 py-4 bg-slate-900 text-white flex items-center justify-between">
+        <div class="flex items-center space-x-2">
+          <i class="ph-bold ph-shield-star text-amber-400 text-xl"></i>
+          <h2 class="font-bold text-base">학과 게시판 관리자 대시보드</h2>
+        </div>
+        <button onclick="closeAdminModal()" class="text-slate-400 hover:text-white">
+          <i class="ph-bold ph-x text-xl"></i>
+        </button>
+      </div>
+
+      <!-- 관리자 서브 탭 -->
+      <div class="flex border-b border-slate-200 bg-slate-100 px-6 text-xs font-semibold overflow-x-auto">
+        <button onclick="switchAdminTab('ai')" id="atab-ai" class="py-3 px-3 text-slate-600 hover:text-blue-600 border-b-2 border-transparent flex items-center space-x-1.5">
+          <span>🚨 AI 유해성 감지함</span>
+          <span id="atab-ai-badge" class="bg-rose-500 text-white px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+        </button>
+        <button onclick="switchAdminTab('reports')" id="atab-reports" class="py-3 px-3 text-slate-600 hover:text-blue-600 border-b-2 border-transparent flex items-center space-x-1.5">
+          <span>접수된 신고 & 허위신고 추적</span>
+          <span id="atab-reports-badge" class="bg-amber-500 text-white px-1.5 py-0.2 rounded-full text-[10px]">0</span>
+        </button>
+        <button onclick="switchAdminTab('banner')" id="atab-banner" class="py-3 px-3 text-slate-600 hover:text-blue-600 border-b-2 border-transparent">긴급 공지 배너</button>
+        <button onclick="switchAdminTab('categories')" id="atab-categories" class="py-3 px-3 text-slate-600 hover:text-blue-600 border-b-2 border-transparent">카테고리(탭) 관리</button>
+        <button onclick="switchAdminTab('users')" id="atab-users" class="py-3 px-3 text-slate-600 hover:text-blue-600 border-b-2 border-transparent">회원 제재(임시 차단)</button>
+        <button onclick="switchAdminTab('trash')" id="atab-trash" class="py-3 px-3 text-slate-600 hover:text-blue-600 border-b-2 border-transparent">휴지통 & 복구</button>
+        <button onclick="switchAdminTab('audit')" id="atab-audit" class="py-3 px-3 text-slate-600 hover:text-blue-600 border-b-2 border-transparent">관리자 감사 로그</button>
+      </div>
+
+      <!-- 관리자 모달 본문 (스크롤) -->
+      <div class="p-6 overflow-y-auto flex-1 text-xs">
+        
+        <!-- 탭 1: AI 유해성 감지 목록 -->
+        <div id="admin-panel-ai" class="space-y-4">
+          <div class="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <p class="font-bold">✨ AI 미디어 유해성 감지 (경고 우선 모드)</p>
+              <p class="text-[11px] text-amber-700 mt-0.5">게시글은 즉시 등록되나, AI가 설정된 민감도 기준을 초과한 유해 미디어를 관리자에게 사전 경고합니다.</p>
+            </div>
+            <div class="flex items-center space-x-2 bg-white px-3 py-1.5 rounded-lg border border-amber-300 shadow-xs">
+              <label class="text-[11px] font-bold text-slate-700 whitespace-nowrap">🎚️ AI 필터 강도:</label>
+              <select id="ai-filter-sensitivity" onchange="changeAiSensitivity()" class="text-xs font-semibold text-slate-800 bg-transparent focus:outline-none cursor-pointer">
+                <option value="strict">엄격 (위험도 50% 이상 감지)</option>
+                <option value="normal">표준 (위험도 75% 이상 감지 - 기본)</option>
+                <option value="relaxed">관대 (위험도 90% 이상 감지)</option>
+              </select>
+            </div>
+          </div>
+          <div id="admin-ai-list" class="space-y-3">
+            <!-- AI 감지 목록 삽입 -->
+          </div>
+        </div>
+
+        <!-- 탭 2: 신고 목록 및 어뷰징 추적 -->
+        <div id="admin-panel-reports" class="hidden space-y-4">
+          <div>
+            <h4 class="font-bold text-slate-800 text-sm mb-2">접수된 신고 내역</h4>
+            <div id="admin-reports-list" class="space-y-2"></div>
+          </div>
+          <div class="pt-4 border-t border-slate-200">
+            <h4 class="font-bold text-slate-800 text-sm mb-2">신고자별 누적 통계 (허위 신고자 색출)</h4>
+            <div id="admin-reporter-stats" class="space-y-2"></div>
+          </div>
+        </div>
+
+        <!-- 탭 3: 긴급 공지 띠 배너 관리 -->
+        <div id="admin-panel-banner" class="hidden space-y-4">
+          <div class="p-4 border border-slate-200 rounded-xl space-y-3 bg-slate-50">
+            <h4 class="font-bold text-slate-800 text-sm">긴급 공지 띠 배너 설정</h4>
+            <div>
+              <label class="block font-medium mb-1">배너 문구</label>
+              <input type="text" id="admin-banner-input" class="w-full p-2 border border-slate-300 rounded bg-white">
+            </div>
+            <div class="flex items-center space-x-4">
+              <label class="flex items-center space-x-1.5 cursor-pointer">
+                <input type="checkbox" id="admin-banner-active" class="w-4 h-4 text-blue-600 rounded">
+                <span>배너 활성화 (사이트 최상단에 노출)</span>
+              </label>
+            </div>
+            <p class="text-[11px] text-slate-400">※ 배너 문구를 수정하여 저장하면, 이전에 배너를 닫았던 모든 사용자에게도 스마트 리셋되어 다시 노출됩니다.</p>
+            <button onclick="saveBannerSettings()" class="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700">배너 설정 저장 및 전체 노출</button>
+          </div>
+        </div>
+
+        <!-- 탭 4: 카테고리(탭) 관리 -->
+        <div id="admin-panel-categories" class="hidden space-y-4">
+          <div class="flex items-center space-x-2">
+            <input type="text" id="new-category-name" placeholder="새 탭 이름 (예: 동아리 홍보)" class="p-2 border border-slate-300 rounded flex-1">
+            <select id="new-category-type" class="p-2 border border-slate-300 rounded">
+              <option value="text">일반 텍스트 목록형</option>
+              <option value="media">미디어/카드형</option>
+            </select>
+            <button onclick="addCategory()" class="px-3 py-2 bg-slate-900 text-white font-bold rounded">카테고리 추가</button>
+          </div>
+          <div id="admin-category-list" class="space-y-2 pt-2"></div>
+        </div>
+
+        <!-- 탭 5: 회원 제재 관리 -->
+        <div id="admin-panel-users" class="hidden space-y-4">
+          <div class="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+            <h4 class="font-bold text-slate-800 text-sm">회원 활동 임시 제한 (글/댓글 작성 금지)</h4>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-medium mb-1">제재 대상 회원</label>
+                <select id="ban-user-select" class="w-full p-2 border border-slate-300 rounded bg-white">
+                  <!-- 회원 옵션 -->
+                </select>
+              </div>
+              <div>
+                <label class="block font-medium mb-1">제한 기간</label>
+                <select id="ban-duration-select" class="w-full p-2 border border-slate-300 rounded bg-white">
+                  <option value="1">1분 (실습 테스트용 즉시 확인)</option>
+                  <option value="1440">1일 (24시간)</option>
+                  <option value="4320">3일</option>
+                  <option value="10080">7일</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label class="block font-medium mb-1">제재 사유</label>
+              <input type="text" id="ban-reason-input" placeholder="예: 부적절한 언어 사용 및 게시판 이용 규칙 위반" class="w-full p-2 border border-slate-300 rounded bg-white">
+            </div>
+            <button onclick="applyUserRestriction()" class="px-4 py-2 bg-rose-600 text-white font-bold rounded-lg hover:bg-rose-700">이용 제한 적용</button>
+          </div>
+          <h4 class="font-bold text-slate-800 text-sm mt-4">현재 제재 중인 회원 목록</h4>
+          <div id="active-restrictions-list" class="space-y-2"></div>
+        </div>
+
+        <!-- 탭 6: 휴지통 & 복구 -->
+        <div id="admin-panel-trash" class="hidden space-y-4">
+          <div class="p-3 bg-slate-100 rounded-lg text-slate-600">
+            삭제된 게시글이 보관되며, 언제든지 [원상 복구]하여 일반 게시판으로 되돌릴 수 있습니다.
+          </div>
+          <div id="admin-trash-list" class="space-y-2"></div>
+        </div>
+
+        <!-- 탭 7: 관리자 감사 로그 -->
+        <div id="admin-panel-audit" class="hidden space-y-4">
+          <h4 class="font-bold text-slate-800 text-sm">관리자 조치 이력 (감사 로그 타임라인)</h4>
+          <div id="admin-audit-log-list" class="space-y-2 font-mono text-[11px]"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 8. 커스텀 실명 로그인 모달 ================= -->
+  <div id="custom-login-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+      <h3 class="font-bold text-slate-900 text-base">새 실명으로 로그인</h3>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">실명 (이름)</label>
+        <input type="text" id="custom-name-input" placeholder="예: 박민수" class="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none focus:border-blue-500">
+      </div>
+      <div>
+        <label class="block text-xs font-bold text-slate-700 mb-1">역할</label>
+        <select id="custom-role-input" class="w-full text-xs p-2.5 border border-slate-300 rounded-lg focus:outline-none">
+          <option value="USER">일반 학생 / 구성원</option>
+          <option value="ADMIN">학과 관리자 (조교/운영진)</option>
+        </select>
+      </div>
+      <div class="flex justify-end space-x-2 pt-2">
+        <button onclick="closeCustomLoginModal()" class="px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-semibold">취소</button>
+        <button onclick="applyCustomLogin()" class="px-4 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold">로그인</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= 9. 화면 우측 하단 토스트 팝업 컨테이너 ================= -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2 pointer-events-none max-w-sm w-full"></div>
+
+  <!-- ================= JAVASCRIPT ================= -->
+  <script>
+    // 1. 상태 데이터 모델 초기화
+    let currentUser = { id: 'userA', name: '홍길동', role: 'USER' };
+    let activeTab = 'all';
+    let searchQuery = '';
+
+    // 긴급 공지 배너 상태
+    let bannerConfig = {
+      active: true,
+      text: '2026학년도 2학기 전공 심화과정 수강신청 마감 2시간 전입니다!',
+      version: 1
+    };
+
+    // 기본 초기 샘플 데이터 정의
+    const DEFAULT_POSTS = [
+      {
+        id: 1,
+        categoryId: 'notice',
+        title: '📢 2026학년도 컴퓨터공학과 종합학술제 참가 안내',
+        content: '올해 컴퓨터공학과 종합학술제가 다음 달 15일 개최됩니다.\n모든 재학생 여러분의 많은 참여와 캡스톤 프로젝트 출품을 바랍니다.',
+        authorId: 'admin',
+        authorName: '김관리(조교)',
+        createdAt: '2026-11-10 10:00',
+        updatedAt: null,
+        views: 124,
+        mediaUrl: '',
+        isDeleted: false,
+        aiFlagged: false
+      },
+      {
+        id: 2,
+        categoryId: 'free',
+        title: '알고리즘 스터디 3명 추가 모집합니다 (백준/프로그래머스)',
+        content: '매주 화/목 19시에 디스코드에서 알고리즘 문제풀이 스터디 하실 학우분 구합니다. 초보자도 환영합니다!',
+        authorId: 'userA',
+        authorName: '홍길동',
+        createdAt: '2026-11-10 12:30',
+        updatedAt: null,
+        views: 45,
+        mediaUrl: '',
+        isDeleted: false,
+        aiFlagged: false
+      },
+      {
+        id: 3,
+        categoryId: 'photo',
+        title: '📸 지난주 열린 학과 해커톤 본선 현장 스케치',
+        content: '열정적으로 밤샘 코딩하던 학생들의 멋진 순간들을 공유합니다!',
+        authorId: 'userB',
+        authorName: '이영희',
+        createdAt: '2026-11-10 14:15',
+        updatedAt: null,
+        views: 89,
+        mediaUrl: 'https://images.unsplash.com/photo-1531482615713-2afd69097998?auto=format&fit=crop&w=800&q=80',
+        isDeleted: false,
+        aiFlagged: false
+      },
+      {
+        id: 4,
+        categoryId: 'video',
+        title: '🎥 [특강] 생성형 AI와 최신 바이브 코딩 실습 강의 녹화본',
+        content: '특강에 참석하지 못한 학우분들을 위한 강의 영상 링크입니다.',
+        authorId: 'admin',
+        authorName: '김관리(조교)',
+        createdAt: '2026-11-10 14:40',
+        updatedAt: null,
+        views: 67,
+        mediaUrl: 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=800&q=80',
+        isDeleted: false,
+        aiFlagged: false
+      }
+    ];
+
+    const DEFAULT_CATEGORIES = [
+      { id: 'notice', name: '공지사항', type: 'text', adminOnly: true },
+      { id: 'free', name: '자유게시판', type: 'text', adminOnly: false },
+      { id: 'photo', name: '학과 사진첩', type: 'media', adminOnly: false },
+      { id: 'video', name: '특강 영상', type: 'media', adminOnly: false }
+    ];
+
+    const DEFAULT_COMMENTS = [
+      { id: 1, postId: 2, authorId: 'userB', authorName: '이영희', content: '저 참여하고 싶습니다! 오픈채팅방 링크가 있을까요?', createdAt: '2026-11-10 13:00' },
+      { id: 2, postId: 2, authorId: 'userA', authorName: '홍길동', content: '네 쪽지나 댓글로 학번 알려주시면 초대드릴게요!', createdAt: '2026-11-10 13:05' }
+    ];
+
+    const DEFAULT_NOTIFICATIONS = [
+      { id: 1, userId: 'userA', postId: 2, text: '이영희님이 회원님의 알고리즘 스터디 글에 댓글을 남겼습니다.', time: '13:00' }
+    ];
+
+    const DEFAULT_BANNER = {
+      active: true,
+      text: '2026학년도 2학기 전공 심화과정 수강신청 마감 2시간 전입니다!',
+      version: 1
+    };
+
+    // 실시간 상태 데이터 변수
+    let posts = [];
+    let categories = [];
+    let comments = [];
+    let notifications = [];
+    let reports = [];
+    let userRestrictions = [];
+    let auditLogs = [];
+    let aiFilterSensitivity = 'normal'; // 'strict'(50%), 'normal'(75%), 'relaxed'(90%)
+
+    // 데이터 저장/불러오기/리셋 (localStorage 영속화)
+    function loadData() {
+      const saved = localStorage.getItem('dept_board_storage');
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          posts = data.posts || DEFAULT_POSTS;
+          // [오름차순 정렬용] 큰 타임스탬프 ID를 순차 번호로 정규화
+          let currentMaxId = 4;
+          posts.forEach(p => {
+            if (p.id < 1000000 && p.id > currentMaxId) currentMaxId = p.id;
+          });
+          posts.forEach(p => {
+            if (p.id >= 1000000) {
+              currentMaxId += 1;
+              const oldId = p.id;
+              p.id = currentMaxId;
+              // 연결된 댓글의 postId도 함께 갱신
+              comments.forEach(c => { if (c.postId === oldId) c.postId = p.id; });
+            }
+          });
+
+          categories = data.categories || DEFAULT_CATEGORIES;
+          comments = data.comments || DEFAULT_COMMENTS;
+          notifications = data.notifications || DEFAULT_NOTIFICATIONS;
+          reports = data.reports || [];
+          userRestrictions = data.userRestrictions || [];
+          auditLogs = data.auditLogs || [{ id: 1, adminName: '김관리(조교)', action: '시스템 초기화 완료', target: '전체', time: '2026-11-10 09:00' }];
+          bannerConfig = data.bannerConfig || DEFAULT_BANNER;
+          aiFilterSensitivity = data.aiFilterSensitivity || 'normal';
+          if (data.currentUser) currentUser = data.currentUser;
+          saveData();
+          return;
+        } catch (e) {
+          console.error('데이터 파싱 오류:', e);
+        }
+      }
+      // 저장된 데이터가 없으면 기본값 할당
+      posts = JSON.parse(JSON.stringify(DEFAULT_POSTS));
+      categories = JSON.parse(JSON.stringify(DEFAULT_CATEGORIES));
+      comments = JSON.parse(JSON.stringify(DEFAULT_COMMENTS));
+      notifications = JSON.parse(JSON.stringify(DEFAULT_NOTIFICATIONS));
+      reports = [];
+      userRestrictions = [];
+      auditLogs = [{ id: 1, adminName: '김관리(조교)', action: '시스템 초기화 완료', target: '전체', time: '2026-11-10 09:00' }];
+      bannerConfig = JSON.parse(JSON.stringify(DEFAULT_BANNER));
+      aiFilterSensitivity = 'normal';
+      saveData();
+    }
+
+    function saveData() {
+      const data = {
+        currentUser,
+        posts,
+        categories,
+        comments,
+        notifications,
+        reports,
+        userRestrictions,
+        auditLogs,
+        bannerConfig,
+        aiFilterSensitivity
+      };
+      localStorage.setItem('dept_board_storage', JSON.stringify(data));
+    }
+
+    function resetAllData() {
+      if (confirm('모든 글, 댓글, 신고, 제재 데이터를 초기화하고 처음 상태로 되돌리시겠습니까?')) {
+        localStorage.removeItem('dept_board_storage');
+        location.reload();
+      }
+    }
+
+    // 2. 초기 렌더링
+    window.addEventListener('DOMContentLoaded', () => {
+      loadData();
+      renderUserBar();
+      renderBanner();
+      renderTabs();
+      renderPosts();
+      updateAdminBadges();
+      renderNotifications();
+
+      // [디버깅 & UX] ESC 키로 모든 모달 닫기 지원
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeDetailModal();
+          closeWriteModal();
+          closeReportModal();
+          closeAdminModal();
+          closeCustomLoginModal();
+          const notifDropdown = document.getElementById('notif-dropdown');
+          if (notifDropdown) notifDropdown.classList.add('hidden');
+        }
+      });
+
+      // [디버깅 & UX] 모달 바깥 어두운 배경(Backdrop) 클릭 시 닫기 지원
+      ['post-detail-modal', 'write-modal', 'report-modal', 'admin-modal', 'custom-login-modal'].forEach(id => {
+        const modal = document.getElementById(id);
+        if (modal) {
+          modal.addEventListener('click', (e) => {
+            if (e.target === modal) {
+              modal.classList.add('hidden');
+            }
+          });
+        }
+      });
+    });
+
+    // ================= 사용자 전환 및 상태 =================
+    function switchUser(type) {
+      if (type === 'userA') currentUser = { id: 'userA', name: '홍길동', role: 'USER' };
+      else if (type === 'userB') currentUser = { id: 'userB', name: '이영희', role: 'USER' };
+      else if (type === 'admin') currentUser = { id: 'admin', name: '김관리(조교)', role: 'ADMIN' };
+      
+      saveData();
+      renderUserBar();
+      renderTabs();
+      renderPosts();
+      renderNotifications();
+
+      // 해당 유저에게 최근 알림이 있으면 토스트 노출
+      const myNotifs = notifications.filter(n => n.userId === currentUser.id);
+      if (myNotifs.length > 0) {
+        showToastNotification('새 알림 도착', myNotifs[0].text, 'bell', myNotifs[0].postId);
+      }
+    }
+
+    function renderUserBar() {
+      const badge = document.getElementById('current-user-badge');
+      badge.textContent = `${currentUser.name} (${currentUser.role === 'ADMIN' ? '관리자' : '일반회원'})`;
+      badge.className = currentUser.role === 'ADMIN' ? 'font-bold text-amber-300' : 'font-bold text-blue-300';
+
+      const adminBtn = document.getElementById('admin-menu-btn');
+      if (currentUser.role === 'ADMIN') {
+        adminBtn.classList.remove('hidden');
+        adminBtn.classList.add('flex');
+      } else {
+        adminBtn.classList.add('hidden');
+        adminBtn.classList.remove('flex');
+      }
+
+      // 제재 여부 체크
+      const restriction = checkUserRestricted(currentUser.id);
+      const restrictBadge = document.getElementById('restriction-status-badge');
+      if (restriction) {
+        restrictBadge.classList.remove('hidden');
+        restrictBadge.title = `사유: ${restriction.reason} (해제: ${restriction.restrictedUntil})`;
+      } else {
+        restrictBadge.classList.add('hidden');
+      }
+    }
+
+    function checkUserRestricted(userId) {
+      const now = Date.now();
+      const found = userRestrictions.find(r => r.userId === userId && (r.untilTimestamp ? r.untilTimestamp > now : true));
+      return found || null;
+    }
+
+    function openCustomLoginModal() { document.getElementById('custom-login-modal').classList.remove('hidden'); }
+    function closeCustomLoginModal() { document.getElementById('custom-login-modal').classList.add('hidden'); }
+    function applyCustomLogin() {
+      const name = document.getElementById('custom-name-input').value.trim();
+      const role = document.getElementById('custom-role-input').value;
+      if (!name) return alert('실명을 입력해주세요.');
+      currentUser = { id: 'user_' + Date.now(), name: name, role: role };
+      saveData();
+      closeCustomLoginModal();
+      renderUserBar();
+      renderTabs();
+      renderPosts();
+    }
+
+    // ================= 긴급 공지 띠 배너 =================
+    function renderBanner() {
+      const banner = document.getElementById('urgent-banner');
+      const isClosed = localStorage.getItem(`banner_closed_v${bannerConfig.version}`);
+      if (bannerConfig.active && !isClosed) {
+        banner.classList.remove('hidden');
+        document.getElementById('urgent-banner-text').textContent = bannerConfig.text;
+      } else {
+        banner.classList.add('hidden');
+      }
+    }
+
+    function closeUrgentBanner() {
+      localStorage.setItem(`banner_closed_v${bannerConfig.version}`, 'true');
+      document.getElementById('urgent-banner').classList.add('hidden');
+    }
+
+    function saveBannerSettings() {
+      const newText = document.getElementById('admin-banner-input').value.trim();
+      const isActive = document.getElementById('admin-banner-active').checked;
+      if (!newText) return alert('배너 문구를 입력해주세요.');
+
+      bannerConfig.text = newText;
+      bannerConfig.active = isActive;
+      bannerConfig.version += 1; // 버전 올림 -> 이전 닫았던 사용자도 스마트 리셋
+
+      addAuditLog('긴급 배너 변경 및 스마트 리셋', `문구: ${newText} / 활성: ${isActive}`);
+      renderBanner();
+      alert('긴급 공지 배너가 저장되었습니다. 모든 사용자에게 다시 표시됩니다.');
+    }
+
+    // ================= 탭 네비게이션 =================
+    function renderTabs() {
+      const container = document.getElementById('category-tabs');
+      container.innerHTML = `
+        <button onclick="navigateTab('all')" class="whitespace-nowrap pb-2 ${activeTab === 'all' ? 'tab-active' : 'text-slate-500 hover:text-slate-900'}">전체</button>
+      `;
+      categories.forEach(cat => {
+        const isActive = activeTab === cat.id;
+        const btn = document.createElement('button');
+        btn.onclick = () => navigateTab(cat.id);
+        btn.className = `whitespace-nowrap pb-2 ${isActive ? 'tab-active' : 'text-slate-500 hover:text-slate-900'}`;
+        btn.innerHTML = `${cat.name} ${cat.adminOnly ? '<span class="text-[10px] bg-amber-100 text-amber-800 px-1 rounded ml-1 font-semibold">공지</span>' : ''}`;
+        container.appendChild(btn);
+      });
+    }
+
+    function navigateTab(tabId) {
+      activeTab = tabId;
+      renderTabs();
+      const titleEl = document.getElementById('current-tab-title');
+      if (tabId === 'all') titleEl.textContent = '전체 글 보기';
+      else {
+        const cat = categories.find(c => c.id === tabId);
+        titleEl.textContent = cat ? cat.name : '글 보기';
+      }
+      renderPosts();
+    }
+
+    // ================= 게시글 렌더링 =================
+    function renderPosts() {
+      const container = document.getElementById('posts-container');
+      const filtered = posts.filter(p => {
+        if (p.isDeleted) return false;
+        if (activeTab !== 'all' && p.categoryId !== activeTab) return false;
+        if (searchQuery) {
+          const q = searchQuery.toLowerCase();
+          return p.title.toLowerCase().includes(q) || p.content.toLowerCase().includes(q) || p.authorName.toLowerCase().includes(q);
+        }
+        return true;
+      });
+
+      document.getElementById('total-posts-count').textContent = filtered.length;
+
+      // [내림차순 정렬] 공지사항은 상단 고정, 나머지 일반 글은 글 번호(ID) 기준 최신 글(#6 -> #5 -> #4 ...) 내림차순 정렬
+      filtered.sort((a, b) => {
+        if (a.categoryId === 'notice' && b.categoryId !== 'notice') return -1;
+        if (a.categoryId !== 'notice' && b.categoryId === 'notice') return 1;
+        return (b.id || 0) - (a.id || 0);
+      });
+
+      if (filtered.length === 0) {
+        if (searchQuery) {
+          container.innerHTML = `
+            <div class="bg-white rounded-xl p-12 text-center text-slate-400 border border-slate-200">
+              <i class="ph-bold ph-magnifying-glass text-3xl mb-2 text-slate-300 inline-block"></i>
+              <p class="font-medium text-slate-700 text-sm">"${escapeHtml(searchQuery)}"에 대한 검색 결과가 없습니다.</p>
+              <p class="text-xs text-slate-400 mt-1">다른 키워드로 검색하거나 검색어를 초기화해 보세요.</p>
+              <button onclick="document.getElementById('search-input').value=''; handleSearch();" class="mt-4 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg text-xs font-bold hover:bg-blue-100">검색어 지우기</button>
+            </div>
+          `;
+        } else {
+          container.innerHTML = `<div class="bg-white rounded-xl p-12 text-center text-slate-400 border border-slate-200">등록된 게시글이 없습니다.</div>`;
+        }
+        return;
+      }
+
+      const activeCatObj = categories.find(c => c.id === activeTab);
+      const isMediaTab = activeCatObj && activeCatObj.type === 'media';
+
+      if (isMediaTab) {
+        // 미디어 카드 그리드 렌더링
+        let gridHtml = `<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">`;
+        filtered.forEach(p => {
+          const commentCnt = comments.filter(c => c.postId === p.id).length;
+          gridHtml += `
+            <div onclick="openDetailModal(${p.id})" class="bg-white rounded-xl overflow-hidden border border-slate-200 hover:shadow-md transition cursor-pointer flex flex-col">
+              <div class="h-44 bg-slate-900 relative overflow-hidden flex items-center justify-center">
+                ${p.mediaUrl ? `<img src="${p.mediaUrl}" class="w-full h-full object-cover">` : `<i class="ph-bold ph-image text-3xl text-slate-600"></i>`}
+                ${p.aiFlagged ? `<span class="absolute top-2 right-2 bg-rose-600 text-white text-[10px] font-bold px-2 py-0.5 rounded shadow">🚨 AI 경고 감지됨</span>` : ''}
+              </div>
+              <div class="p-3.5 flex-1 flex flex-col justify-between">
+                <div>
+                  <h4 class="font-bold text-slate-900 text-sm line-clamp-1 mb-1">${escapeHtml(p.title)}</h4>
+                  <p class="text-xs text-slate-500 line-clamp-2">${escapeHtml(p.content)}</p>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-slate-400 mt-3 pt-2 border-t border-slate-100">
+                  <span>${escapeHtml(p.authorName)}</span>
+                  <div class="flex items-center space-x-2">
+                    <span><i class="ph-bold ph-chat-circle"></i> ${commentCnt}</span>
+                    <span><i class="ph-bold ph-eye"></i> ${p.views}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+        gridHtml += `</div>`;
+        container.innerHTML = gridHtml;
+      } else {
+        // 일반 텍스트 리스트 렌더링
+        let listHtml = `<div class="bg-white rounded-xl border border-slate-200 divide-y divide-slate-100 overflow-hidden shadow-xs">`;
+        filtered.forEach((p, index) => {
+          const commentCnt = comments.filter(c => c.postId === p.id).length;
+          const isNotice = p.categoryId === 'notice';
+          const displayId = p.id;
+          listHtml += `
+            <div onclick="openDetailModal(${p.id})" class="p-4 hover:bg-slate-50 transition cursor-pointer flex items-center justify-between gap-4 ${isNotice ? 'bg-amber-50/50' : ''}">
+              <div class="flex items-center space-x-3 flex-1 min-w-0">
+                ${isNotice 
+                  ? `<span class="bg-amber-500 text-white text-[11px] font-bold px-2 py-0.5 rounded whitespace-nowrap flex-shrink-0">공지</span>` 
+                  : `<span class="text-xs text-slate-400 font-mono px-1.5 py-0.5 bg-slate-100 rounded text-center whitespace-nowrap flex-shrink-0">#${displayId}</span>`}
+                <span class="font-medium text-slate-900 text-sm truncate hover:text-blue-600">${escapeHtml(p.title)}</span>
+                ${commentCnt > 0 ? `<span class="text-xs font-semibold text-blue-600 font-mono flex-shrink-0">[${commentCnt}]</span>` : ''}
+                ${p.aiFlagged ? `<span class="bg-rose-100 text-rose-700 text-[10px] font-bold px-1.5 py-0.5 rounded flex-shrink-0">AI 감지</span>` : ''}
+              </div>
+              <div class="flex items-center space-x-3 text-xs text-slate-400 whitespace-nowrap flex-shrink-0">
+                <span class="text-slate-600">${escapeHtml(p.authorName)}</span>
+                <span>${formatDateString(p.createdAt)}</span>
+                <span class="w-10 text-right"><i class="ph-bold ph-eye"></i> ${p.views}</span>
+              </div>
+            </div>
+          `;
+        });
+        listHtml += `</div>`;
+        container.innerHTML = listHtml;
+      }
+    }
+
+    function handleSearch() {
+      searchQuery = document.getElementById('search-input').value.trim();
+      renderPosts();
+    }
+
+    // ================= 게시글 상세 모달 및 보안 권한 =================
+    let currentDetailPostId = null;
+
+    function openDetailModal(postId) {
+      const p = posts.find(item => item.id === postId);
+      if (!p) return;
+
+      currentDetailPostId = postId;
+      p.views += 1; // 조회수 증가
+      saveData(); // 조회수 저장
+
+      const catObj = categories.find(c => c.id === p.categoryId);
+      document.getElementById('detail-category-badge').textContent = catObj ? catObj.name : '일반';
+      document.getElementById('detail-date').textContent = p.createdAt;
+      document.getElementById('detail-title').textContent = p.title;
+      document.getElementById('detail-author').textContent = p.authorName;
+      document.getElementById('detail-views').textContent = p.views;
+      document.getElementById('detail-content').textContent = p.content;
+
+      // 수정일시
+      const updateEl = document.getElementById('detail-updated-at');
+      if (p.updatedAt) {
+        updateEl.textContent = `(${p.updatedAt}에 수정됨)`;
+        updateEl.classList.remove('hidden');
+      } else {
+        updateEl.classList.add('hidden');
+      }
+
+      // 미디어 표시
+      const mediaBox = document.getElementById('detail-media-container');
+      if (p.mediaUrl) {
+        mediaBox.classList.remove('hidden');
+        mediaBox.innerHTML = `<img src="${p.mediaUrl}" class="max-h-[380px] w-auto rounded-lg object-contain">`;
+      } else {
+        mediaBox.classList.add('hidden');
+        mediaBox.innerHTML = '';
+      }
+
+      // 권한 버튼 렌더링 (슬라이드 17, 18 핵심)
+      renderDetailActions(p);
+
+      // 댓글 렌더링
+      renderComments(p.id);
+
+      document.getElementById('post-detail-modal').classList.remove('hidden');
+    }
+
+    function closeDetailModal() {
+      document.getElementById('post-detail-modal').classList.add('hidden');
+      currentDetailPostId = null;
+      renderPosts(); // 조회수 갱신 반영
+    }
+
+    function renderDetailActions(p) {
+      const box = document.getElementById('detail-actions');
+      box.innerHTML = '';
+
+      const isAuthor = currentUser.id === p.authorId;
+      const isAdmin = currentUser.role === 'ADMIN';
+
+      if (isAuthor) {
+        // 작성자 본인: 수정 및 삭제 가능
+        box.innerHTML += `
+          <button onclick="openEditModal(${p.id})" class="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-xs font-semibold">수정</button>
+          <button onclick="requestDeletePost(${p.id})" class="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded text-xs font-semibold">삭제</button>
+        `;
+      } else if (!isAdmin) {
+        // 일반 사용자 (타인의 글): 수정/삭제 불가 + 신고 버튼만 노출
+        box.innerHTML += `
+          <button onclick="openReportModal(${p.id})" class="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-700 rounded text-xs font-semibold flex items-center space-x-1">
+            <i class="ph-bold ph-warning-circle"></i>
+            <span>신고</span>
+          </button>
+        `;
+      }
+
+      if (isAdmin && !isAuthor) {
+        // 관리자 (타인의 글): 직접 강제 삭제만 노출 (신고 버튼 미노출)
+        box.innerHTML += `
+          <button onclick="requestAdminForceDelete(${p.id})" class="px-2.5 py-1 bg-slate-900 hover:bg-black text-white rounded text-xs font-semibold flex items-center space-x-1">
+            <i class="ph-bold ph-trash"></i>
+            <span>관리자 강제 삭제</span>
+          </button>
+        `;
+      }
+    }
+
+    // 서버 레벨 인가(403) 시뮬레이션
+    function requestDeletePost(postId) {
+      const p = posts.find(i => i.id === postId);
+      if (!p) return;
+
+      // 보안 권한 검사 (실제 API 요청 시뮬레이션)
+      if (currentUser.id !== p.authorId && currentUser.role !== 'ADMIN') {
+        alert('❌ [403 Forbidden - 권한 없음]\n타인의 게시글을 삭제할 수 없습니다!');
+        return;
+      }
+
+      if (confirm('정말로 이 게시글을 삭제하시겠습니까? (삭제된 글은 관리자 휴지통으로 이동합니다)')) {
+        p.isDeleted = true;
+        addAuditLog('게시글 삭제', `글 #${p.id} (${p.title}) by ${currentUser.name}`);
+        alert('게시글이 삭제되었습니다.');
+        closeDetailModal();
+        renderPosts();
+      }
+    }
+
+    function requestAdminForceDelete(postId) {
+      if (currentUser.role !== 'ADMIN') {
+        return alert('❌ [403 Forbidden] 관리자만 강제 삭제할 수 있습니다.');
+      }
+      const p = posts.find(i => i.id === postId);
+      if (!p) return;
+
+      if (confirm(`[관리자 권한]\n"${p.title}" 글을 강제 삭제하시겠습니까?`)) {
+        p.isDeleted = true;
+        addAuditLog('관리자 강제 삭제', `글 #${p.id} (${p.title}) by ${currentUser.name}`);
+        alert('관리자에 의해 강제 삭제 처리되었습니다.');
+        closeDetailModal();
+        renderPosts();
+      }
+    }
+
+    // ================= 댓글 및 알림 =================
+    function renderComments(postId) {
+      const list = document.getElementById('detail-comments-list');
+      const postComments = comments.filter(c => c.postId === postId);
+      document.getElementById('detail-comments-count').textContent = postComments.length;
+
+      if (postComments.length === 0) {
+        list.innerHTML = `<div class="text-xs text-slate-400 py-3 text-center bg-slate-50 rounded-lg">등록된 댓글이 없습니다. 첫 의견을 남겨보세요!</div>`;
+        return;
+      }
+
+      let html = '';
+      postComments.forEach(c => {
+        const isAuthor = currentUser.id === c.authorId;
+        const isAdmin = currentUser.role === 'ADMIN';
+        html += `
+          <div class="p-3 bg-slate-50 rounded-xl flex items-start justify-between text-xs">
+            <div>
+              <div class="flex items-center space-x-2 mb-1">
+                <span class="font-bold text-slate-800">${escapeHtml(c.authorName)}</span>
+                <span class="text-[10px] text-slate-400">${c.createdAt}</span>
+              </div>
+              <p class="text-slate-700 leading-relaxed">${escapeHtml(c.content)}</p>
+            </div>
+            ${(isAuthor || isAdmin) ? `
+              <button onclick="deleteComment(${c.id})" class="text-slate-400 hover:text-rose-600 text-[11px] p-1">삭제</button>
+            ` : ''}
+          </div>
+        `;
+      });
+      list.innerHTML = html;
+    }
+
+    function submitComment() {
+      // 제재 여부 체크
+      const restriction = checkUserRestricted(currentUser.id);
+      if (restriction) {
+        return alert(`⚠️ [작성 제한 알림]\n관리자에 의해 글/댓글 작성이 제한된 상태입니다.\n\n- 사유: ${restriction.reason}\n- 해제 일시: ${restriction.restrictedUntil}`);
+      }
+
+      const input = document.getElementById('comment-input');
+      const content = input.value.trim();
+      if (!content) return alert('댓글 내용을 입력하세요.');
+
+      const targetPost = posts.find(p => p.id === currentDetailPostId);
+      if (!targetPost) return;
+
+      const newComment = {
+        id: Date.now(),
+        postId: currentDetailPostId,
+        authorId: currentUser.id,
+        authorName: currentUser.name,
+        content: content,
+        createdAt: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+      };
+      comments.push(newComment);
+      input.value = '';
+
+      // 원글 작성자에게 댓글 알림 데이터 생성 (본인이 쓴 글이 아닐 때)
+      if (targetPost.authorId !== currentUser.id) {
+        const notifText = `${currentUser.name}님이 회원님의 글 "${targetPost.title.substring(0, 15)}..."에 댓글을 남겼습니다.`;
+        notifications.unshift({
+          id: Date.now(),
+          userId: targetPost.authorId,
+          postId: targetPost.id,
+          text: notifText,
+          time: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+        });
+        renderNotifications();
+      }
+
+      saveData();
+      renderComments(currentDetailPostId);
+    }
+
+    function deleteComment(commentId) {
+      const idx = comments.findIndex(c => c.id === commentId);
+      if (idx === -1) return;
+      const c = comments[idx];
+
+      if (currentUser.id !== c.authorId && currentUser.role !== 'ADMIN') {
+        return alert('❌ [403 Forbidden] 댓글 삭제 권한이 없습니다.');
+      }
+
+      if (confirm('댓글을 삭제하시겠습니까?')) {
+        comments.splice(idx, 1);
+        saveData();
+        renderComments(currentDetailPostId);
+      }
+    }
+
+    function renderNotifications() {
+      const userNotifs = notifications.filter(n => n.userId === currentUser.id);
+      const badge = document.getElementById('notif-badge');
+      const list = document.getElementById('notif-list');
+
+      if (userNotifs.length > 0) {
+        badge.classList.remove('hidden');
+        list.innerHTML = userNotifs.map(n => `
+          <div onclick="${n.postId ? `openDetailModal(${n.postId}); toggleNotificationDropdown();` : ''}" class="p-3 hover:bg-blue-50/50 transition cursor-pointer">
+            <p class="text-slate-800">${escapeHtml(n.text)}</p>
+            <div class="flex items-center justify-between mt-1">
+              <span class="text-[10px] text-slate-400">${n.time}</span>
+              ${n.postId ? `<span class="text-[10px] text-blue-600 font-semibold">글 보기 →</span>` : ''}
+            </div>
+          </div>
+        `).join('');
+      } else {
+        badge.classList.add('hidden');
+        list.innerHTML = `<div class="p-6 text-center text-slate-400">새로운 알림이 없습니다.</div>`;
+      }
+    }
+
+    function toggleNotificationDropdown() {
+      document.getElementById('notif-dropdown').classList.toggle('hidden');
+    }
+
+    function clearNotifications() {
+      notifications = notifications.filter(n => n.userId !== currentUser.id);
+      saveData();
+      renderNotifications();
+      document.getElementById('notif-dropdown').classList.add('hidden');
+    }
+
+    // ================= 글쓰기 / 수정 =================
+    function openWriteModal() {
+      // 제재 여부 체크
+      const restriction = checkUserRestricted(currentUser.id);
+      if (restriction) {
+        return alert(`⚠️ [작성 제한 알림]\n관리자에 의해 글 작성이 제한된 상태입니다.\n\n- 사유: ${restriction.reason}\n- 해제 일시: ${restriction.restrictedUntil}`);
+      }
+
+      document.getElementById('write-modal-title').textContent = '새 게시글 작성';
+      document.getElementById('edit-post-id').value = '';
+      document.getElementById('post-title').value = '';
+      document.getElementById('post-content').value = '';
+      document.getElementById('post-media-url').value = '';
+
+      // 카테고리 셀렉트 세팅 (관리자만 공지사항 선택 가능)
+      const select = document.getElementById('post-category');
+      select.innerHTML = '';
+      categories.forEach(cat => {
+        if (cat.adminOnly && currentUser.role !== 'ADMIN') return; // 일반 회원은 공지사항 선택 불가
+        const opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.textContent = cat.name + (cat.adminOnly ? ' (관리자 전용)' : '');
+        select.appendChild(opt);
+      });
+
+      handleCategoryChange();
+      document.getElementById('write-modal').classList.remove('hidden');
+    }
+
+    function openEditModal(postId) {
+      const p = posts.find(i => i.id === postId);
+      if (!p) return;
+
+      if (currentUser.id !== p.authorId) {
+        return alert('❌ [403 Forbidden] 본인이 작성한 글만 수정할 수 있습니다.');
+      }
+
+      closeDetailModal();
+      document.getElementById('write-modal-title').textContent = '게시글 수정';
+      document.getElementById('edit-post-id').value = p.id;
+      document.getElementById('post-title').value = p.title;
+      document.getElementById('post-content').value = p.content;
+      document.getElementById('post-media-url').value = p.mediaUrl || '';
+
+      const select = document.getElementById('post-category');
+      select.innerHTML = '';
+      categories.forEach(cat => {
+        if (cat.adminOnly && currentUser.role !== 'ADMIN') return;
+        const opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.textContent = cat.name;
+        if (cat.id === p.categoryId) opt.selected = true;
+        select.appendChild(opt);
+      });
+
+      handleCategoryChange();
+      document.getElementById('write-modal').classList.remove('hidden');
+    }
+
+    function closeWriteModal() {
+      document.getElementById('write-modal').classList.add('hidden');
+    }
+
+    function handleCategoryChange() {
+      const catId = document.getElementById('post-category').value;
+      const cat = categories.find(c => c.id === catId);
+      const mediaBox = document.getElementById('media-input-group');
+      if (cat && cat.type === 'media') {
+        mediaBox.classList.remove('hidden');
+      } else {
+        mediaBox.classList.add('hidden');
+      }
+    }
+
+    function setSampleMedia(type) {
+      const urlInput = document.getElementById('post-media-url');
+      if (type === 'photo_safe') {
+        urlInput.value = 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80';
+      } else if (type === 'photo_unsafe') {
+        urlInput.value = 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675?auto=format&fit=crop&w=800&q=80&unsafe_simulation=true';
+      } else if (type === 'video') {
+        urlInput.value = 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&w=800&q=80';
+      }
+    }
+
+    function handlePostSubmit(e) {
+      e.preventDefault();
+      const editId = document.getElementById('edit-post-id').value;
+      const catId = document.getElementById('post-category').value;
+      const title = document.getElementById('post-title').value.trim();
+      const content = document.getElementById('post-content').value.trim();
+      const mediaUrl = document.getElementById('post-media-url').value.trim();
+
+      if (!title) return alert('게시글 제목을 입력해주세요.');
+      if (!content) return alert('게시글 내용을 입력해주세요.');
+
+      // 수정인 경우
+      if (editId) {
+        const p = posts.find(i => i.id === parseInt(editId));
+        if (p) {
+          if (currentUser.id !== p.authorId) return alert('권한이 없습니다.');
+          p.title = title;
+          p.content = content;
+          p.categoryId = catId;
+          p.mediaUrl = mediaUrl;
+          p.updatedAt = new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' });
+          alert('게시글이 수정되었습니다.');
+        }
+      } else {
+        // AI 미디어 유해성 검사 시뮬레이션 (경고 우선 모드 + 강도 조절)
+        let threshold = 75; // 기본 normal
+        if (aiFilterSensitivity === 'strict') threshold = 50;
+        else if (aiFilterSensitivity === 'relaxed') threshold = 90;
+
+        let riskScore = 15; // 기본 안전 점수 (15%)
+        if (mediaUrl.includes('unsafe_simulation')) {
+          riskScore = 88;
+        } else if (title.includes('폭력') || content.includes('폭력') || title.includes('위험') || content.includes('위험')) {
+          riskScore = 93;
+        } else if (title.includes('테스트유해') || content.includes('부적절') || content.includes('비방')) {
+          riskScore = 82;
+        } else if (title.includes('주의') || content.includes('주의') || title.includes('경고') || content.includes('경고')) {
+          riskScore = 65;
+        }
+
+        const isUnsafe = riskScore >= threshold;
+
+        // [오름차순 정렬용] 순차 증가 글 번호 매기기
+        const maxId = posts.reduce((max, p) => Math.max(max, (p.id && p.id < 1000000) ? p.id : 0), 0);
+        const newId = (maxId > 0 ? maxId : 4) + 1;
+
+        const newPost = {
+          id: newId,
+          categoryId: catId,
+          title: title,
+          content: content,
+          authorId: currentUser.id,
+          authorName: currentUser.name,
+          createdAt: new Date().toLocaleDateString('ko-KR') + ' ' + new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' }),
+          updatedAt: null,
+          views: 0,
+          mediaUrl: mediaUrl,
+          isDeleted: false,
+          aiFlagged: isUnsafe,
+          aiFlagRiskScore: riskScore
+        };
+
+        posts.push(newPost);
+
+        if (isUnsafe) {
+          addAuditLog('AI 사전 감지 경고', `글 #${newPost.id} ("${title}") 위험도 ${riskScore}% 감지 (기준: ${threshold}% 이상)`);
+          alert(`✅ 글이 정상 등록되었습니다.\n\n⚠️ [AI 미디어 안전 안내]\nAI 자동 분석 결과 위험도 ${riskScore}%로 감지되어(현재 필터 기준: ${threshold}% 이상), 관리자 검토 큐에 알림이 전송되었습니다.`);
+        } else {
+          alert('게시글이 성공적으로 등록되었습니다.');
+        }
+      }
+
+      saveData();
+      closeWriteModal();
+      renderPosts();
+      updateAdminBadges();
+    }
+
+    // ================= 신고 시스템 =================
+    let reportingPostId = null;
+    function openReportModal(postId) {
+      reportingPostId = postId;
+      document.getElementById('report-post-id').value = postId;
+      document.getElementById('report-modal').classList.remove('hidden');
+    }
+    function closeReportModal() {
+      document.getElementById('report-modal').classList.add('hidden');
+      reportingPostId = null;
+    }
+
+    function submitReport() {
+      const postId = parseInt(document.getElementById('report-post-id').value);
+      const post = posts.find(p => p.id === postId);
+      if (!post) return;
+
+      // 중복 신고 방지
+      const already = reports.find(r => r.postId === postId && r.reporterId === currentUser.id);
+      if (already) {
+        alert('이미 신고하신 게시글입니다. 관리자가 검토 중입니다.');
+        closeReportModal();
+        return;
+      }
+
+      const reason = document.querySelector('input[name="report-reason"]:checked').value;
+      const newReport = {
+        id: Date.now(),
+        postId: postId,
+        postTitle: post.title,
+        postAuthor: post.authorName,
+        reporterId: currentUser.id,
+        reporterName: currentUser.name,
+        reason: reason,
+        reportedAt: new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit' })
+      };
+      reports.unshift(newReport);
+      addAuditLog('사용자 신고 접수', `신고자: ${currentUser.name} / 대상 글: #${postId}`);
+
+      alert('신고가 성공적으로 접수되었습니다. 학과 관리자가 검토 후 처리합니다.');
+      closeReportModal();
+      updateAdminBadges();
+    }
+
+    // ================= 관리자 대시보드 =================
+    function openAdminModal() {
+      if (currentUser.role !== 'ADMIN') return alert('관리자 권한이 필요합니다.');
+      switchAdminTab('ai');
+      document.getElementById('admin-modal').classList.remove('hidden');
+    }
+    function closeAdminModal() {
+      document.getElementById('admin-modal').classList.add('hidden');
+    }
+
+    function switchAdminTab(tab) {
+      const tabs = ['ai', 'reports', 'banner', 'categories', 'users', 'trash', 'audit'];
+      tabs.forEach(t => {
+        document.getElementById(`admin-panel-${t}`).classList.add('hidden');
+        const btn = document.getElementById(`atab-${t}`);
+        if (btn) btn.className = 'py-3 px-3 text-slate-600 hover:text-blue-600 border-b-2 border-transparent';
+      });
+
+      document.getElementById(`admin-panel-${tab}`).classList.remove('hidden');
+      const activeBtn = document.getElementById(`atab-${tab}`);
+      if (activeBtn) activeBtn.className = 'py-3 px-3 text-blue-600 font-bold border-b-2 border-blue-600';
+
+      // 각 탭별 렌더링 호출
+      if (tab === 'ai') renderAdminAI();
+      else if (tab === 'reports') renderAdminReports();
+      else if (tab === 'banner') {
+        document.getElementById('admin-banner-input').value = bannerConfig.text;
+        document.getElementById('admin-banner-active').checked = bannerConfig.active;
+      }
+      else if (tab === 'categories') renderAdminCategories();
+      else if (tab === 'users') renderAdminUsers();
+      else if (tab === 'trash') renderAdminTrash();
+      else if (tab === 'audit') renderAdminAudit();
+    }
+
+    function updateAdminBadges() {
+      const aiCount = posts.filter(p => p.aiFlagged && !p.isDeleted).length;
+      const reportCount = reports.length;
+      const total = aiCount + reportCount;
+
+      const adminCountEl = document.getElementById('admin-alert-count');
+      if (total > 0) {
+        adminCountEl.textContent = total;
+        adminCountEl.classList.remove('hidden');
+      } else {
+        adminCountEl.classList.add('hidden');
+      }
+
+      document.getElementById('atab-ai-badge').textContent = aiCount;
+      document.getElementById('atab-reports-badge').textContent = reportCount;
+    }
+
+    // AI 감지함 렌더링
+    function renderAdminAI() {
+      const select = document.getElementById('ai-filter-sensitivity');
+      if (select) select.value = aiFilterSensitivity;
+
+      const list = document.getElementById('admin-ai-list');
+      const flagged = posts.filter(p => p.aiFlagged && !p.isDeleted);
+
+      if (flagged.length === 0) {
+        list.innerHTML = `<div class="p-8 text-center text-slate-400 bg-slate-50 rounded-xl">현재 AI에 의해 감지된 유해 의심 게시글이 없습니다. 깨끗합니다!</div>`;
+        return;
+      }
+
+      list.innerHTML = flagged.map(p => {
+        const riskScore = p.aiFlagRiskScore || 85;
+        return `
+        <div class="p-4 border border-rose-200 bg-rose-50/40 rounded-xl flex items-start justify-between gap-4">
+          <div class="flex items-start space-x-3">
+            <div class="w-20 h-16 bg-slate-900 rounded-lg overflow-hidden flex-shrink-0">
+              <img src="${p.mediaUrl}" class="w-full h-full object-cover">
+            </div>
+            <div>
+              <div class="flex items-center space-x-2">
+                <span class="font-bold text-rose-700">🚨 부적절 미디어 의심 (위험도 ${riskScore}%)</span>
+                <span class="text-slate-400">#${p.id}</span>
+              </div>
+              <h5 class="font-bold text-slate-900 text-sm mt-0.5">${escapeHtml(p.title)}</h5>
+              <p class="text-slate-500 text-[11px]">작성자: ${escapeHtml(p.authorName)} (${p.authorId}) | 작성일시: ${p.createdAt}</p>
+            </div>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="dismissAiFlag(${p.id})" class="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 font-bold rounded-lg hover:bg-slate-50">정상 승인</button>
+            <button onclick="requestAdminForceDelete(${p.id}); renderAdminAI();" class="px-3 py-1.5 bg-rose-600 text-white font-bold rounded-lg hover:bg-rose-700">강제 삭제</button>
+          </div>
+        </div>
+      `;
+      }).join('');
+    }
+
+    function changeAiSensitivity() {
+      const select = document.getElementById('ai-filter-sensitivity');
+      if (!select) return;
+      aiFilterSensitivity = select.value;
+      saveData();
+      
+      const labelMap = {
+        'strict': '엄격 (위험도 50% 이상 감지)',
+        'normal': '표준 (위험도 75% 이상 감지)',
+        'relaxed': '관대 (위험도 90% 이상 감지)'
+      };
+      
+      addAuditLog('AI 필터 강도 변경', `${labelMap[aiFilterSensitivity] || aiFilterSensitivity}로 설정 변경`);
+      alert(`AI 자동 필터 강도가 [${labelMap[aiFilterSensitivity]}]로 변경 및 저장되었습니다.`);
+      renderAdminAI();
+    }
+
+    function dismissAiFlag(postId) {
+      const p = posts.find(i => i.id === postId);
+      if (p) {
+        p.aiFlagged = false;
+        addAuditLog('AI 감지 해제(정상 승인)', `글 #${p.id} by ${currentUser.name}`);
+        renderAdminAI();
+        updateAdminBadges();
+        renderPosts();
+      }
+    }
+
+    // 신고 관리 & 신고자 통계 렌더링
+    function renderAdminReports() {
+      const list = document.getElementById('admin-reports-list');
+      if (reports.length === 0) {
+        list.innerHTML = `<div class="p-6 text-center text-slate-400 bg-slate-50 rounded-xl">접수된 신고가 없습니다.</div>`;
+      } else {
+        list.innerHTML = reports.map(r => `
+          <div class="p-3 border border-slate-200 rounded-xl flex items-center justify-between bg-white">
+            <div>
+              <span class="text-rose-600 font-bold">[${r.reason}]</span>
+              <span class="font-semibold text-slate-800 ml-1">${escapeHtml(r.postTitle)}</span>
+              <span class="text-slate-400 text-[11px] block mt-0.5">신고자: ${escapeHtml(r.reporterName)} (${r.reporterId}) | 일시: ${r.reportedAt}</span>
+            </div>
+            <div class="flex items-center space-x-1.5">
+              <button onclick="openDetailModal(${r.postId}); closeAdminModal();" class="px-2.5 py-1 bg-blue-50 text-blue-600 font-bold rounded">글 보기</button>
+              <button onclick="resolveReport(${r.id})" class="px-2.5 py-1 bg-slate-100 text-slate-600 font-bold rounded hover:bg-slate-200">처리 완료</button>
+            </div>
+          </div>
+        `).join('');
+      }
+
+      // 허위 신고자 색출용 누적 통계
+      const stats = {};
+      reports.forEach(r => {
+        if (!stats[r.reporterId]) stats[r.reporterId] = { name: r.reporterName, count: 0, posts: [] };
+        stats[r.reporterId].count += 1;
+        stats[r.reporterId].posts.push(r.postTitle);
+      });
+
+      const statBox = document.getElementById('admin-reporter-stats');
+      const reporters = Object.keys(stats);
+      if (reporters.length === 0) {
+        statBox.innerHTML = `<div class="text-slate-400 p-2">신고 이력이 없습니다.</div>`;
+      } else {
+        statBox.innerHTML = reporters.map(id => {
+          const item = stats[id];
+          const isWarning = item.count >= 3;
+          return `
+            <div class="p-2.5 bg-slate-50 border ${isWarning ? 'border-rose-300 bg-rose-50/50' : 'border-slate-200'} rounded-lg flex items-center justify-between">
+              <div>
+                <span class="font-bold text-slate-800">${item.name} (${id})</span>
+                <span class="ml-2 font-bold ${isWarning ? 'text-rose-600' : 'text-slate-600'}">총 ${item.count}회 신고</span>
+                ${isWarning ? '<span class="ml-2 text-[10px] bg-rose-600 text-white px-1.5 py-0.2 rounded font-bold">허위/과다 신고 의심</span>' : ''}
+                <div class="text-[11px] text-slate-400 mt-1">신고한 글: ${item.posts.join(', ')}</div>
+              </div>
+              <button onclick="quickBanUser('${id}', '${item.name.replace(/'/g, "\\'")}')" class="px-2.5 py-1 bg-rose-600 text-white font-bold rounded hover:bg-rose-700">이용 제한</button>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function resolveReport(reportId) {
+      reports = reports.filter(r => r.id !== reportId);
+      addAuditLog('신고 처리 완료', `신고 ID #${reportId}`);
+      renderAdminReports();
+      updateAdminBadges();
+    }
+
+    // 카테고리 관리
+    function renderAdminCategories() {
+      const list = document.getElementById('admin-category-list');
+      list.innerHTML = categories.map(cat => `
+        <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
+          <div class="flex items-center space-x-2">
+            <span class="font-bold text-slate-800">${cat.name}</span>
+            <span class="text-slate-400 font-mono text-[11px]">(${cat.id})</span>
+            <span class="text-[10px] bg-slate-100 text-slate-600 px-1.5 py-0.5 rounded">${cat.type === 'media' ? '미디어형' : '텍스트형'}</span>
+            ${cat.adminOnly ? '<span class="text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded font-bold">관리자 전용</span>' : ''}
+          </div>
+          ${!cat.adminOnly ? `<button onclick="deleteCategory('${cat.id}')" class="text-rose-600 hover:text-rose-800 font-bold">삭제</button>` : '<span class="text-slate-300 text-[11px]">기본 탭</span>'}
+        </div>
+      `).join('');
+    }
+
+    function addCategory() {
+      const name = document.getElementById('new-category-name').value.trim();
+      const type = document.getElementById('new-category-type').value;
+      if (!name) return alert('카테고리 이름을 입력하세요.');
+      const id = 'cat_' + Date.now();
+      categories.push({ id, name, type, adminOnly: false });
+      document.getElementById('new-category-name').value = '';
+      addAuditLog('카테고리 추가', `이름: ${name} / 형태: ${type}`);
+      renderAdminCategories();
+      renderTabs();
+    }
+
+    function deleteCategory(catId) {
+      if (confirm('이 카테고리를 삭제하시겠습니까?')) {
+        categories = categories.filter(c => c.id !== catId);
+        addAuditLog('카테고리 삭제', `ID: ${catId}`);
+        renderAdminCategories();
+        renderTabs();
+      }
+    }
+
+    // 회원 제재 관리
+    function renderAdminUsers() {
+      const select = document.getElementById('ban-user-select');
+      select.innerHTML = `
+        <option value="userA">홍길동 (userA)</option>
+        <option value="userB">이영희 (userB)</option>
+      `;
+
+      const list = document.getElementById('active-restrictions-list');
+      const now = Date.now();
+      const active = userRestrictions.filter(r => r.untilTimestamp ? r.untilTimestamp > now : true);
+
+      if (active.length === 0) {
+        list.innerHTML = `<div class="p-4 text-center text-slate-400 bg-slate-50 rounded-lg">현재 활동 제한 중인 회원이 없습니다.</div>`;
+      } else {
+        list.innerHTML = active.map(r => `
+          <div class="p-3 bg-white border border-rose-200 rounded-xl flex items-center justify-between">
+            <div>
+              <span class="font-bold text-rose-700">${r.userName} (${r.userId})</span>
+              <span class="text-[11px] text-slate-500 block mt-0.5">사유: ${r.reason}</span>
+              <span class="text-[10px] text-slate-400 font-mono">만료 일시: ${r.restrictedUntil}</span>
+            </div>
+            <button onclick="liftRestriction('${r.userId}')" class="px-3 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded">제재 조기 해제</button>
+          </div>
+        `).join('');
+      }
+    }
+
+    function applyUserRestriction() {
+      const userId = document.getElementById('ban-user-select').value;
+      const userName = userId === 'userA' ? '홍길동' : '이영희';
+      const durationMin = parseInt(document.getElementById('ban-duration-select').value);
+      const reason = document.getElementById('ban-reason-input').value.trim() || '게시판 이용 규칙 위반';
+
+      const untilTimestamp = Date.now() + durationMin * 60000;
+      const until = new Date(untilTimestamp).toLocaleString('ko-KR');
+
+      userRestrictions = userRestrictions.filter(r => r.userId !== userId);
+      userRestrictions.push({ userId, userName, untilTimestamp, restrictedUntil: until, reason });
+
+      addAuditLog('회원 활동 제한 적용', `대상: ${userName} (${durationMin}분간 글/댓글 제한) / 사유: ${reason}`);
+      alert(`[제재 완료]\n${userName}님의 글/댓글 작성이 ${until}까지 제한되었습니다.`);
+      renderAdminUsers();
+      renderUserBar();
+    }
+
+    function quickBanUser(userId, userName) {
+      const untilTimestamp = Date.now() + 1440 * 60000;
+      const until = new Date(untilTimestamp).toLocaleString('ko-KR');
+      userRestrictions.push({ userId, userName, untilTimestamp, restrictedUntil: until, reason: '허위 신고 남발' });
+      addAuditLog('허위신고 제재 적용', `대상: ${userName} (1일)`);
+      alert(`${userName}님에게 1일간 이용 제한이 적용되었습니다.`);
+      renderAdminReports();
+      renderUserBar();
+    }
+
+    function liftRestriction(userId) {
+      userRestrictions = userRestrictions.filter(r => r.userId !== userId);
+      addAuditLog('회원 제재 조기 해제', `대상: ${userId}`);
+      alert('제재가 해제되었습니다.');
+      renderAdminUsers();
+      renderUserBar();
+    }
+
+    // 휴지통 관리
+    function renderAdminTrash() {
+      const list = document.getElementById('admin-trash-list');
+      const deleted = posts.filter(p => p.isDeleted);
+
+      if (deleted.length === 0) {
+        list.innerHTML = `<div class="p-8 text-center text-slate-400 bg-slate-50 rounded-xl">휴지통이 비어 있습니다.</div>`;
+        return;
+      }
+
+      list.innerHTML = deleted.map(p => `
+        <div class="p-3 bg-white border border-slate-200 rounded-xl flex items-center justify-between">
+          <div>
+            <span class="text-xs text-slate-400 font-mono mr-2">#${p.id}</span>
+            <span class="font-bold text-slate-800 line-through text-slate-500">${escapeHtml(p.title)}</span>
+            <span class="text-slate-400 text-[11px] block mt-0.5">작성자: ${escapeHtml(p.authorName)} | 원작성일: ${p.createdAt}</span>
+          </div>
+          <div class="flex items-center space-x-2">
+            <button onclick="restorePost(${p.id})" class="px-3 py-1 bg-emerald-50 text-emerald-700 font-bold rounded hover:bg-emerald-100">원상 복원</button>
+            <button onclick="permanentDeletePost(${p.id})" class="px-3 py-1 bg-rose-50 text-rose-600 font-bold rounded hover:bg-rose-100">영구 삭제</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function restorePost(postId) {
+      const p = posts.find(i => i.id === postId);
+      if (p) {
+        p.isDeleted = false;
+        addAuditLog('게시글 복원', `글 #${p.id} ("${p.title}") 복원 완료`);
+        alert('게시글이 성공적으로 복원되었습니다.');
+        renderAdminTrash();
+        renderPosts();
+      }
+    }
+
+    function permanentDeletePost(postId) {
+      if (confirm('영구 삭제하면 복구할 수 없습니다. 계속하시겠습니까?')) {
+        posts = posts.filter(p => p.id !== postId);
+        addAuditLog('게시글 영구 삭제', `글 #${postId}`);
+        renderAdminTrash();
+      }
+    }
+
+    // 관리자 감사 로그
+    function renderAdminAudit() {
+      const list = document.getElementById('admin-audit-log-list');
+      list.innerHTML = auditLogs.map(log => `
+        <div class="p-2 border-b border-slate-100 flex items-center justify-between text-slate-600">
+          <div>
+            <span class="text-blue-600 font-bold">[${log.action}]</span>
+            <span class="text-slate-800 ml-1">${log.target}</span>
+          </div>
+          <span class="text-slate-400">${log.time}</span>
+        </div>
+      `).join('');
+    }
+
+    function addAuditLog(action, target) {
+      auditLogs.unshift({
+        id: Date.now(),
+        adminName: currentUser.name,
+        action: action,
+        target: target,
+        time: new Date().toLocaleTimeString('ko-KR')
+      });
+      saveData();
+    }
+
+    function formatDateString(dateStr) {
+      if (!dateStr) return '';
+      // '2026-11-10 12:30' 또는 '2026. 11. 10. 오후 12:30' 등 대응
+      const parts = dateStr.trim().split(' ');
+      if (parts.length >= 3 && parts[0].endsWith('.')) {
+        return `${parts[0]} ${parts[1]} ${parts[2]}`.replace(/\.$/, '');
+      }
+      return parts[0] || dateStr;
+    }
+
+    // 화면 우측 하단 토스트 팝업 함수
+    function showToastNotification(title, message, icon = 'bell', targetPostId = null) {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = 'pointer-events-auto bg-slate-900/95 text-white border border-slate-700 p-3.5 rounded-2xl shadow-2xl flex items-start space-x-3 transform transition-all duration-300 translate-y-4 opacity-0 cursor-pointer hover:border-blue-500';
+      
+      toast.innerHTML = `
+        <div class="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center flex-shrink-0 mt-0.5 shadow-md">
+          <i class="ph-bold ph-${icon} text-base"></i>
+        </div>
+        <div class="flex-1 min-w-0 pr-1">
+          <div class="flex items-center justify-between">
+            <h5 class="font-bold text-xs text-blue-300">${escapeHtml(title)}</h5>
+            <span class="text-[10px] text-slate-400">방금 전</span>
+          </div>
+          <p class="text-xs text-slate-200 mt-1 whitespace-pre-wrap leading-snug">${escapeHtml(message)}</p>
+          ${targetPostId ? `<span class="text-[10px] text-blue-400 hover:underline mt-1.5 inline-block">해당 글로 바로가기 →</span>` : ''}
+        </div>
+        <button onclick="event.stopPropagation(); this.parentElement.remove();" class="text-slate-400 hover:text-white p-0.5">
+          <i class="ph-bold ph-x text-sm"></i>
+        </button>
+      `;
+
+      if (targetPostId) {
+        toast.onclick = () => {
+          closeDetailModal();
+          closeAdminModal();
+          setTimeout(() => {
+            openDetailModal(targetPostId);
+          }, 60);
+          toast.remove();
+        };
+      }
+
+      container.appendChild(toast);
+
+      requestAnimationFrame(() => {
+        toast.classList.remove('translate-y-4', 'opacity-0');
+      });
+
+      setTimeout(() => {
+        toast.classList.add('opacity-0', 'translate-y-2');
+        setTimeout(() => toast.remove(), 300);
+      }, 5000);
+    }
+
+    // 유틸
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>
